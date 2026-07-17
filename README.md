@@ -52,7 +52,7 @@ uv run python jobsge.py
 ## Output Files
 
 - `seen_jobs.json` - Tracks IDs of seen jobs (for duplicate detection)
-  - `seen_jobs.csv` - CSV history of all discovered jobs with columns: job_id, title, url, timestamp (if ENABLE_CSV=true)
+- `seen_jobs.csv` - CSV history of all discovered jobs with columns: job_id, title, url, timestamp (if ENABLE_CSV=true)
 
 These files are automatically created and updated. They are excluded from git via `.gitignore`.
 
