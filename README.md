@@ -37,8 +37,6 @@ TIMESTAMP_FORMAT="%d/%m/%Y"
 # Filtering
 EXCLUDE_KEYWORDS="senior,.net,Java,UX/UI,PHP"
 
-# Optional
-ENABLE_CSV=false          # Set to true to enable CSV export
 ```
 
 ## Usage
