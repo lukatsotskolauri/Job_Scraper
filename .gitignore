@@ -3,6 +3,11 @@
 secrets.json
 seen_jobs.json
 seen_jobs.csv
+vacancy_analysis.json
+user_profile.json
+vacancy_match.json
+debug.html
+debug_vacancy_text.txt
 cookies/
 .venv/
 venv/
