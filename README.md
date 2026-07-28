@@ -29,8 +29,8 @@ TELEGRAM_CHAT_ID="your_chat_id_here"
 
 # Scraping Configuration
 IT_CATEGORY_ID=6          # IT jobs category ID
-MAX_PAGES=1               # Number of pages to scrape
-JOB_LIMIT=15              # Maximum jobs to process
+MAX_PAGES=3              # Number of pages to scrape
+JOB_LIMIT=10            # Maximum jobs to process
 REQUEST_TIMEOUT=10
 TIMESTAMP_FORMAT="%d/%m/%Y"
 
