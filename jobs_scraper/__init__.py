@@ -1,3 +1,9 @@
+
+from .models import JobListing
+from .scraper import fetch_page, parse_job_listings, health_check, scrape_all_pages
+from .state import load_seen_ids, save_seen_ids, get_new_listings
+from .filter import exclude_listings
+from .notification import format_jobs_message, send_telegram_message, save_to_csv
 from .config import (
     BASE_URL,
     USER_AGENT,
@@ -13,11 +19,6 @@ from .config import (
     TELEGRAM_CHAT_ID,
     get_env,
 )
-from .models import JobListing
-from .scraper import fetch_page, parse_job_listings, health_check, scrape_all_pages
-from .state import load_seen_ids, save_seen_ids, get_new_listings
-from .filter import exclude_listings
-from .notification import format_jobs_message, send_telegram_message, save_to_csv
 
 __all__ = [
     "BASE_URL",
