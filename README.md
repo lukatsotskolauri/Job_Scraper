@@ -10,7 +10,7 @@ A Python script that scrapes IT job listings from [jobs.ge](https://jobs.ge/), f
 
 ### Setup with uv
 ```bash
-# Clone the repository
+# Clone the repo
 git clone https://github.com/nikol1313/jobs.ge-scraper
 cd jobsscraper
 
