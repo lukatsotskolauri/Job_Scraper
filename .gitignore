@@ -1,7 +1,6 @@
 .env
 *.env
 secrets.json
-
 seen_jobs.csv
 vacancy_analysis.json
 user_profile.json
