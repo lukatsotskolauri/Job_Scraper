@@ -1,6 +1,0 @@
-beautifulsoup4
-httpx
-playwright
-pydantic
-python-dotenv
-requests

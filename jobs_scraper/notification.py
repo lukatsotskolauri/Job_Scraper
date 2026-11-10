@@ -35,7 +35,7 @@ def send_telegram_message(jobs: List[JobListing]) -> None:
         raise RuntimeError("Telegram request failed.") from exc
 
     if not response.ok:
-        raise RuntimeError(f"Telegram API returned HTTP {response.status_code}.")
+        raise RuntimeError(f"Telegram API returned HTTP {response.status_code}: {response.text}")
 
 
 def save_to_csv(jobs: List[JobListing]) -> None:

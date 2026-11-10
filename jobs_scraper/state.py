@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 
 def load_seen_ids() -> Set[str]:
     if STATE_FILE.exists():
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return set(json.load(f))
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except (json.JSONDecodeError, ValueError):
+            logger.warning("State file is empty or corrupt, starting fresh.")
     return set()
 
 
@@ -24,9 +27,4 @@ def save_seen_ids(ids: Set[str]) -> None:
 
 def get_new_listings(listings: List["JobListing"]) -> List["JobListing"]:
     seen_ids = load_seen_ids()
-    current_ids = {job.job_id for job in listings}
-
-    new_listings = [job for job in listings if job.job_id not in seen_ids]
-
-    save_seen_ids(seen_ids | current_ids)
-    return new_listings
+    return [job for job in listings if job.job_id not in seen_ids]
