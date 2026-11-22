@@ -19,9 +19,11 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CHAT_CATEGORIES: ${{ secrets.CHAT_CATEGORIES }}
         run: uv run python jobsge.py
 
       - name: Save seen jobs
+        if: success() || failure()   # keep progress from categories that succeeded
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
