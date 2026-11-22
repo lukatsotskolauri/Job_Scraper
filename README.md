@@ -1,25 +1,26 @@
 # jobs.ge IT Job Scraper
 
-A small Python script that scrapes the latest IT vacancies from [jobs.ge](https://jobs.ge), filters out the ones you don't want, and sends the new ones to a Telegram channel. It runs automatically once a day with GitHub Actions, so you don't need a server.
+A small Python script that scrapes the latest IT vacancies from [jobs.ge](https://jobs.ge), filters out the ones you don't want, and sends the new ones to a Telegram channel. It runs automatically twice a day (12:00 and 20:00 Tbilisi time) with GitHub Actions, so you don't need a server.
 
 ## Features
 
 - Scrapes the IT category of jobs.ge (configurable number of pages)
 - Filters out listings by keyword (for example `senior`, `.net`, `Java`)
 - Remembers what it has already sent, so you never get the same job twice
-- Sends new listings to a Telegram channel, group, or private chat
+- Sends new listings to a Telegram channel, group, or private chat, with a clickable title, the company and the application deadline
 - Can send other jobs.ge categories to other chats with the same bot (see [Multiple chats and categories](#multiple-chats-and-categories))
 - Saves the seen-job state only after Telegram succeeds, so a failed send is retried on the next run
-- Runs daily on GitHub Actions for free
+- Runs twice a day on GitHub Actions for free
 
 ## How it works
 
 1. A health check confirms jobs.ge is reachable and the page layout is still parseable.
 2. For each configured category, the scraper reads the first `MAX_PAGES` pages.
-3. In the IT category, listings containing an excluded keyword are dropped. The result is capped at `JOB_LIMIT`.
-4. Listings whose IDs are not in that category's list in `seen_jobs.json` are treated as new.
-5. New listings are sent to every chat assigned to that category.
-6. Only after a successful send, the new IDs are saved to `seen_jobs.json` (and appended to `seen_jobs.csv`).
+3. In the IT category, listings containing an excluded keyword are dropped.
+4. Only listings posted in the last `MAX_AGE_DAYS` days are kept, so old listings never show up as new.
+5. Listings whose IDs are not in that category's list in `seen_jobs.json` are treated as new. At most `JOB_LIMIT` of them are sent per run; any extra wait for the next run, so nothing is skipped on busy days.
+6. New listings are sent to every chat assigned to that category.
+7. Only after a successful send, the new IDs are saved to `seen_jobs.json` (and appended to `seen_jobs.csv`).
 
 ## Project structure
 
@@ -112,7 +113,8 @@ New listings are printed in the terminal and sent to Telegram. Run it a second t
 | `CHAT_CATEGORIES` | none | Extra chats, each with its own category: `chat_id:category_id,chat_id:category_id` |
 | `IT_CATEGORY_ID` | `6` | jobs.ge category ID used for `TELEGRAM_CHAT_ID` |
 | `MAX_PAGES` | `3` | Number of listing pages to scrape |
-| `JOB_LIMIT` | `15` | Maximum number of listings per run |
+| `JOB_LIMIT` | `15` | Maximum number of new listings sent per category per run; extra ones go out on the next run |
+| `MAX_AGE_DAYS` | `3` | Only listings posted within this many days count as new |
 | `REQUEST_TIMEOUT` | `15` | HTTP timeout in seconds |
 | `TIMESTAMP_FORMAT` | `%d/%m/%Y` | Date format shown in messages |
 | `EXCLUDE_KEYWORDS` | `senior,.net,Java,UX/UI,PHP` | Comma-separated words; IT listings with these in the title are skipped |
@@ -133,11 +135,11 @@ One bot can post different job categories to different chats.
 
 `TELEGRAM_CHAT_ID` keeps getting IT jobs. Alternatively, put your own chat in the list too (`<your_chat_id>:6,...`) and remove `TELEGRAM_CHAT_ID`.
 
-Each category is scraped once, even if several chats share it, and keeps its own seen-job list. The first run for a new category sends up to `JOB_LIMIT` listings, then only new ones. If one category fails, the others are still sent and saved, and the run is marked as failed.
+Each category is scraped once, even if several chats share it, and keeps its own seen-job list. The first run for a new category sends the newest `JOB_LIMIT` listings and marks the rest of the recent ones as seen, then only new ones are sent. If one category fails, the others are still sent and saved, and the run is marked as failed.
 
 ## Automation with GitHub Actions
 
-The workflow in `.github/workflows/scrape.yml` runs the scraper every day at 05:00 UTC (09:00 in Tbilisi) and commits the updated `seen_jobs.json` back to the repo so state persists between runs.
+The workflow in `.github/workflows/scrape.yml` runs the scraper every day at 08:00 and 16:00 UTC (12:00 and 20:00 in Tbilisi) and commits the updated `seen_jobs.json` back to the repo so state persists between runs.
 
 ### Setup
 
@@ -156,11 +158,16 @@ name: Jobs scraper
 
 on:
   schedule:
-    - cron: "0 5 * * *"   # 05:00 UTC = 09:00 Tbilisi
+    - cron: "0 8,16 * * *"   # 08:00 and 16:00 UTC = 12:00 and 20:00 Tbilisi
   workflow_dispatch:       # manual run button
 
 permissions:
   contents: write
+
+# Never run two scrapes at once, so they can't both push seen_jobs.json.
+concurrency:
+  group: scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
@@ -196,7 +203,7 @@ Notes:
 
 - GitHub cron times are always in **UTC**. Tbilisi is UTC+4, so subtract 4 hours from your local time.
 - Scheduled runs can start a few minutes late.
-- The workflow commits to the repo daily, so run `git pull` before pushing from your own machine.
+- The workflow commits to the repo after each run, so run `git pull` before pushing from your own machine.
 - Keep the bot token and chat IDs in **Secrets**. Plain settings like `MAX_PAGES` can stay in the workflow file.
 
 ### Alternative: run locally on a schedule
