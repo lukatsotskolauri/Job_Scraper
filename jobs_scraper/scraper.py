@@ -40,16 +40,31 @@ def parse_job_listings(html: str) -> List[JobListing]:
             continue
         seen_ids.add(job_id)
 
+        # Listing rows are: favourite | title | logo | company | posted | deadline.
+        company = posted = deadline = ""
+        row = link.find_parent("tr")
+        if row is not None:
+            cells = row.find_all("td", recursive=False)
+            if len(cells) >= 6:
+                company, posted, deadline = (_cell_text(cell) for cell in cells[3:6])
+
         listings.append(
             JobListing(
                 job_id=job_id,
                 title=title,
                 url=f"https://jobs.ge/ge/?view=jobs&id={job_id}",
                 timestamp=timestamp,
+                company=company,
+                posted=posted,
+                deadline=deadline,
             )
         )
 
     return listings
+
+
+def _cell_text(cell) -> str:
+    return " ".join(cell.get_text(" ", strip=True).split())
 
 
 def health_check() -> bool:
@@ -73,6 +88,7 @@ def health_check() -> bool:
 
 def scrape_all_pages(max_pages: int = 3, cid: int = IT_CATEGORY_ID) -> List[JobListing]:
     all_listings: List[JobListing] = []
+    seen_ids: set = set()
     for page in range(1, max_pages + 1):
         logger.info("Fetching page %d ...", page)
         html = fetch_page(page=page, cid=cid)
@@ -80,5 +96,9 @@ def scrape_all_pages(max_pages: int = 3, cid: int = IT_CATEGORY_ID) -> List[JobL
         if not page_listings:
             logger.info("No listings on page %d, stopping.", page)
             break
-        all_listings.extend(page_listings)
+        # A job can show up on two pages if the list shifts while paging.
+        for job in page_listings:
+            if job.job_id not in seen_ids:
+                seen_ids.add(job.job_id)
+                all_listings.append(job)
     return all_listings
