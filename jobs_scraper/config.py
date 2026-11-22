@@ -13,7 +13,8 @@ USER_AGENT = (
 IT_CATEGORY_ID = int(os.getenv("IT_CATEGORY_ID", "6"))
 MAX_PAGES = int(os.getenv("MAX_PAGES", "3"))
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "15"))
-JOB_LIMIT = int(os.getenv("JOB_LIMIT", "15"))
+JOB_LIMIT = int(os.getenv("JOB_LIMIT", "15"))  # max jobs sent per category per run; the rest wait for the next run
+MAX_AGE_DAYS = int(os.getenv("MAX_AGE_DAYS", "3"))  # only jobs posted within this many days count as new
 TIMESTAMP_FORMAT = os.getenv("TIMESTAMP_FORMAT", "%d/%m/%Y")
 
 EXCLUDE_KEYWORDS = tuple(k.strip() for k in os.getenv("EXCLUDE_KEYWORDS", "senior,.net,Java,UX/UI,PHP").split(","))
