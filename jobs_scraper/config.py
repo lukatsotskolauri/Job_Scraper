@@ -26,6 +26,30 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", os.getenv("telegram_bot_tok
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", os.getenv("telegram_chat_id"))
 
 
+def _parse_chat_categories(raw: str) -> list[tuple[str, int]]:
+    """Parse "chat_id:category_id,chat_id:category_id" into a list of pairs."""
+    chats: list[tuple[str, int]] = []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        chat_id, sep, cid = item.rpartition(":")
+        chat_id, cid = chat_id.strip(), cid.strip()
+        if not sep or not chat_id or not cid.isdigit():
+            raise ValueError(
+                f"Invalid CHAT_CATEGORIES entry {item!r}; expected chat_id:category_id"
+            )
+        chats.append((chat_id, int(cid)))
+    return chats
+
+
+# Extra chats, each with its own jobs.ge category: "chat_id:cid,chat_id:cid".
+# TELEGRAM_CHAT_ID keeps receiving IT jobs (IT_CATEGORY_ID) as before.
+CHAT_CATEGORIES = _parse_chat_categories(os.getenv("CHAT_CATEGORIES", ""))
+if TELEGRAM_CHAT_ID and all(chat != TELEGRAM_CHAT_ID for chat, _ in CHAT_CATEGORIES):
+    CHAT_CATEGORIES.insert(0, (TELEGRAM_CHAT_ID, IT_CATEGORY_ID))
+
+
 def get_env(*names: str) -> str | None:
     for name in names:
         value = os.getenv(name)
