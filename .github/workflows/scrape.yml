@@ -2,11 +2,17 @@ name: Jobs scraper
 
 on:
   schedule:
-    - cron: "0 5 * * *"   # once a day, 05:00 UTC = 09:00 Tbilisi
+    - cron: "0 8,16 * * *"   # 08:00 and 16:00 UTC = 12:00 and 20:00 Tbilisi
   workflow_dispatch:       # manual run button
 
 permissions:
   contents: write
+
+# Never run two scrapes at once (e.g. a manual run during a scheduled one),
+# so they can't both push seen_jobs.json.
+concurrency:
+  group: scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
