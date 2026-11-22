@@ -2,9 +2,9 @@ import logging
 import sys
 from collections import defaultdict
 
-from jobs_scraper.config import MAX_PAGES, JOB_LIMIT, CHAT_CATEGORIES, IT_CATEGORY_ID
+from jobs_scraper.config import MAX_PAGES, JOB_LIMIT, MAX_AGE_DAYS, CHAT_CATEGORIES, IT_CATEGORY_ID
 from jobs_scraper.scraper import health_check, scrape_all_pages
-from jobs_scraper.filter import exclude_listings
+from jobs_scraper.filter import exclude_listings, filter_recent
 from jobs_scraper.state import get_new_listings, load_seen, save_seen
 from jobs_scraper.notification import save_to_csv, send_telegram_message
 
@@ -13,11 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 def process_category(cid: int, chat_ids: list[str], seen: dict[str, set[str]]) -> None:
-    listings = exclude_listings(scrape_all_pages(max_pages=MAX_PAGES, cid=cid), cid)[:JOB_LIMIT]
-    logger.info("[category %d] Scraped %d listings.", cid, len(listings))
+    listings = exclude_listings(scrape_all_pages(max_pages=MAX_PAGES, cid=cid), cid)
+    listings = filter_recent(listings, MAX_AGE_DAYS)
+    logger.info("[category %d] %d listing(s) from the last %d day(s).", cid, len(listings), MAX_AGE_DAYS)
 
-    new_listings = get_new_listings(listings, seen.get(str(cid), set()))
-    logger.info("[category %d] %d new listing(s) since last run.", cid, len(new_listings))
+    # Find new jobs first, then cap, so a busy day can't push jobs out of view.
+    # Jobs over the cap stay unseen and go out on the next run.
+    first_run = str(cid) not in seen
+    unseen = get_new_listings(listings, seen.get(str(cid), set()))
+    new_listings = unseen[:JOB_LIMIT]
+    logger.info(
+        "[category %d] %d new listing(s), sending %d.", cid, len(unseen), len(new_listings)
+    )
 
     if not new_listings:
         return
@@ -29,7 +36,10 @@ def process_category(cid: int, chat_ids: list[str], seen: dict[str, set[str]]) -
         send_telegram_message(new_listings, chat_id, cid)  # raises on failure
 
     save_to_csv(new_listings)
-    seen.setdefault(str(cid), set()).update(job.job_id for job in new_listings)
+    # On a category's first run, send only the newest batch and mark the
+    # rest as seen too, instead of working through the backlog over many runs.
+    marked = unseen if first_run else new_listings
+    seen.setdefault(str(cid), set()).update(job.job_id for job in marked)
     save_seen(seen)
 
 
