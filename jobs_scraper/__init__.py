@@ -2,8 +2,8 @@
 from .models import JobListing
 from .scraper import fetch_page, parse_job_listings, health_check, scrape_all_pages
 from .state import load_seen, save_seen, get_new_listings
-from .filter import exclude_listings
-from .notification import format_jobs_message, send_telegram_message, save_to_csv
+from .filter import exclude_listings, filter_recent
+from .notification import format_jobs_message, build_messages, send_telegram_message, save_to_csv
 from .config import (
     BASE_URL,
     USER_AGENT,
@@ -11,6 +11,7 @@ from .config import (
     MAX_PAGES,
     REQUEST_TIMEOUT,
     JOB_LIMIT,
+    MAX_AGE_DAYS,
     TIMESTAMP_FORMAT,
     EXCLUDE_KEYWORDS,
     STATE_FILE,
@@ -28,6 +29,7 @@ __all__ = [
     "MAX_PAGES",
     "REQUEST_TIMEOUT",
     "JOB_LIMIT",
+    "MAX_AGE_DAYS",
     "TIMESTAMP_FORMAT",
     "EXCLUDE_KEYWORDS",
     "STATE_FILE",
@@ -45,7 +47,9 @@ __all__ = [
     "save_seen",
     "get_new_listings",
     "exclude_listings",
+    "filter_recent",
     "format_jobs_message",
+    "build_messages",
     "send_telegram_message",
     "save_to_csv",
 ]
