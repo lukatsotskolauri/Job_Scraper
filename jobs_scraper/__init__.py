@@ -1,7 +1,7 @@
 
 from .models import JobListing
 from .scraper import fetch_page, parse_job_listings, health_check, scrape_all_pages
-from .state import load_seen_ids, save_seen_ids, get_new_listings
+from .state import load_seen, save_seen, get_new_listings
 from .filter import exclude_listings
 from .notification import format_jobs_message, send_telegram_message, save_to_csv
 from .config import (
@@ -17,6 +17,7 @@ from .config import (
     CSV_FILE,
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID,
+    CHAT_CATEGORIES,
     get_env,
 )
 
@@ -33,14 +34,15 @@ __all__ = [
     "CSV_FILE",
     "TELEGRAM_BOT_TOKEN",
     "TELEGRAM_CHAT_ID",
+    "CHAT_CATEGORIES",
     "get_env",
     "JobListing",
     "fetch_page",
     "parse_job_listings",
     "health_check",
     "scrape_all_pages",
-    "load_seen_ids",
-    "save_seen_ids",
+    "load_seen",
+    "save_seen",
     "get_new_listings",
     "exclude_listings",
     "format_jobs_message",
