@@ -1,5 +1,6 @@
 import csv
 import logging
+from html import escape
 from typing import List
 
 import requests
@@ -9,9 +10,39 @@ from .models import JobListing
 
 logger = logging.getLogger(__name__)
 
+TELEGRAM_MAX_LENGTH = 4096
+
+
+def format_job(job: JobListing) -> str:
+    """One job as Telegram HTML: a clickable title, then company and deadline."""
+    lines = [f'<a href="{escape(job.url)}">{escape(job.title)}</a>']
+    details = []
+    if job.company:
+        details.append(f"🏢 {escape(job.company)}")
+    if job.deadline:
+        details.append(f"⏳ {escape(job.deadline)}")
+    if details:
+        lines.append(" · ".join(details))
+    return "\n".join(lines)
+
 
 def format_jobs_message(jobs: List[JobListing]) -> str:
-    return "\n\n".join(f"[{job.timestamp}] {job.title}\n{job.url}" for job in jobs)
+    return "\n\n".join(format_job(job) for job in jobs)
+
+
+def build_messages(jobs: List[JobListing], header: str) -> List[str]:
+    """Split jobs into as few messages as possible under Telegram's length limit."""
+    messages: List[str] = []
+    current = f"<b>{escape(header)}</b>"
+    for job in jobs:
+        entry = format_job(job)
+        if len(current) + 2 + len(entry) > TELEGRAM_MAX_LENGTH:
+            messages.append(current)
+            current = entry
+        else:
+            current = f"{current}\n\n{entry}"
+    messages.append(current)
+    return messages
 
 
 def send_telegram_message(jobs: List[JobListing], chat_id: str, cid: int = IT_CATEGORY_ID) -> None:
@@ -20,22 +51,25 @@ def send_telegram_message(jobs: List[JobListing], chat_id: str, cid: int = IT_CA
         return
 
     label = "IT job(s)" if cid == IT_CATEGORY_ID else f"job(s) in category {cid}"
+    header = f"{len(jobs)} new {label} on jobs.ge"
 
-    try:
-        response = requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": f"{len(jobs)} new {label} on jobs.ge\n\n{format_jobs_message(jobs)}",
-                "disable_web_page_preview": True,
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
-    except requests.RequestException as exc:
-        raise RuntimeError("Telegram request failed.") from exc
+    for text in build_messages(jobs, header):
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            raise RuntimeError("Telegram request failed.") from exc
 
-    if not response.ok:
-        raise RuntimeError(f"Telegram API returned HTTP {response.status_code}: {response.text}")
+        if not response.ok:
+            raise RuntimeError(f"Telegram API returned HTTP {response.status_code}: {response.text}")
 
 
 def save_to_csv(jobs: List[JobListing]) -> None:
@@ -45,9 +79,11 @@ def save_to_csv(jobs: List[JobListing]) -> None:
         writer = csv.writer(f)
 
         if not file_exists:
-            writer.writerow(["job_id", "title", "url", "timestamp"])
+            writer.writerow(["job_id", "title", "url", "timestamp", "company", "posted", "deadline"])
 
         for job in jobs:
-            writer.writerow([job.job_id, job.title, job.url, job.timestamp])
+            writer.writerow(
+                [job.job_id, job.title, job.url, job.timestamp, job.company, job.posted, job.deadline]
+            )
 
     logger.info("Saved %d job(s) to %s", len(jobs), CSV_FILE)
