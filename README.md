@@ -8,16 +8,17 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 - Filters out listings by keyword (for example `senior`, `.net`, `Java`)
 - Remembers what it has already sent, so you never get the same job twice
 - Sends new listings to a Telegram channel, group, or private chat
+- Can send other jobs.ge categories to other chats with the same bot (see [Multiple chats and categories](#multiple-chats-and-categories))
 - Saves the seen-job state only after Telegram succeeds, so a failed send is retried on the next run
 - Runs daily on GitHub Actions for free
 
 ## How it works
 
 1. A health check confirms jobs.ge is reachable and the page layout is still parseable.
-2. The scraper reads the first `MAX_PAGES` pages of the IT category.
-3. Listings containing an excluded keyword are dropped, and the result is capped at `JOB_LIMIT`.
-4. Listings whose IDs are not in `seen_jobs.json` are treated as new.
-5. New listings are sent to Telegram.
+2. For each configured category, the scraper reads the first `MAX_PAGES` pages.
+3. In the IT category, listings containing an excluded keyword are dropped. The result is capped at `JOB_LIMIT`.
+4. Listings whose IDs are not in that category's list in `seen_jobs.json` are treated as new.
+5. New listings are sent to every chat assigned to that category.
 6. Only after a successful send, the new IDs are saved to `seen_jobs.json` (and appended to `seen_jobs.csv`).
 
 ## Project structure
@@ -28,11 +29,11 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 ├── jobs_scraper/
 │   ├── config.py          # Settings, read from environment variables
 │   ├── scraper.py         # Health check and page scraping
-│   ├── filter.py          # Keyword exclusion
-│   ├── state.py           # Loads the seen job IDs from seen_jobs.json
+│   ├── filter.py          # Keyword exclusion (IT category only)
+│   ├── state.py           # Seen job IDs per category, stored in seen_jobs.json
 │   ├── notification.py    # Telegram sending and CSV logging
 │   └── models.py          # JobListing data model
-├── seen_jobs.json         # IDs of jobs already sent (committed by the workflow)
+├── seen_jobs.json         # IDs of jobs already sent, per category (committed by the workflow)
 └── .github/workflows/
     └── scrape.yml         # Daily schedule
 ```
@@ -78,7 +79,10 @@ Create a `.env` file in the project root:
 
 ```env
 TELEGRAM_BOT_TOKEN=123456:your-bot-token
-TELEGRAM_CHAT_ID=@your_channel_or_-100xxxxxxxxxx
+TELEGRAM_CHAT_ID=@your_channel_or_-100xxxxxxxxxx   # receives IT jobs
+
+# Optional: other chats with their own category (chat_id:category_id, comma-separated)
+CHAT_CATEGORIES=-1001234567890:3
 
 # Optional (defaults shown in the table below)
 IT_CATEGORY_ID=6
@@ -104,13 +108,32 @@ New listings are printed in the terminal and sent to Telegram. Run it a second t
 | Variable | Default | Description |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | none | Bot token from @BotFather (required) |
-| `TELEGRAM_CHAT_ID` | none | Channel, group, or user ID to send to (required) |
-| `IT_CATEGORY_ID` | `6` | jobs.ge category ID |
+| `TELEGRAM_CHAT_ID` | none | Channel, group, or user ID that receives IT jobs |
+| `CHAT_CATEGORIES` | none | Extra chats, each with its own category: `chat_id:category_id,chat_id:category_id` |
+| `IT_CATEGORY_ID` | `6` | jobs.ge category ID used for `TELEGRAM_CHAT_ID` |
 | `MAX_PAGES` | `3` | Number of listing pages to scrape |
 | `JOB_LIMIT` | `15` | Maximum number of listings per run |
 | `REQUEST_TIMEOUT` | `15` | HTTP timeout in seconds |
 | `TIMESTAMP_FORMAT` | `%d/%m/%Y` | Date format shown in messages |
-| `EXCLUDE_KEYWORDS` | `senior,.net,Java,UX/UI,PHP` | Comma-separated words; listings with these in the title are skipped |
+| `EXCLUDE_KEYWORDS` | `senior,.net,Java,UX/UI,PHP` | Comma-separated words; IT listings with these in the title are skipped |
+
+At least one of `TELEGRAM_CHAT_ID` or `CHAT_CATEGORIES` must be set.
+
+## Multiple chats and categories
+
+One bot can post different job categories to different chats.
+
+1. Find the category number: open the category on jobs.ge and look at `cid=` in the URL. For example, `https://www.jobs.ge/?page=1&q=&cid=3` is category `3`. (IT is `6`.) Other URL filters such as `lid` and `jid` are ignored.
+2. Add the bot to the other chat and get its chat ID (see step 3 of Setup).
+3. Set `CHAT_CATEGORIES` to `chat_id:category_id` pairs, separated by commas:
+
+   ```env
+   CHAT_CATEGORIES=-1001234567890:3,987654321:12
+   ```
+
+`TELEGRAM_CHAT_ID` keeps getting IT jobs. Alternatively, put your own chat in the list too (`<your_chat_id>:6,...`) and remove `TELEGRAM_CHAT_ID`.
+
+Each category is scraped once, even if several chats share it, and keeps its own seen-job list. The first run for a new category sends up to `JOB_LIMIT` listings, then only new ones. If one category fails, the others are still sent and saved, and the run is marked as failed.
 
 ## Automation with GitHub Actions
 
@@ -119,9 +142,10 @@ The workflow in `.github/workflows/scrape.yml` runs the scraper every day at 05:
 ### Setup
 
 1. Push the project to your own GitHub repository (private is recommended).
-2. Go to **Settings → Secrets and variables → Actions** and add two repository secrets:
+2. Go to **Settings → Secrets and variables → Actions** and add these repository secrets:
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
+   - `CHAT_CATEGORIES` (optional, for extra chats)
 3. Go to **Settings → Actions → General → Workflow permissions** and select **Read and write permissions**.
 4. Open the **Actions** tab, choose **Jobs scraper**, and click **Run workflow** to test.
 
@@ -149,6 +173,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CHAT_CATEGORIES: ${{ secrets.CHAT_CATEGORIES }}
           IT_CATEGORY_ID: "6"
           MAX_PAGES: "3"
           JOB_LIMIT: "10"
@@ -158,6 +183,7 @@ jobs:
         run: uv run python jobsge.py
 
       - name: Save seen jobs
+        if: success() || failure()   # keep progress from categories that succeeded
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
@@ -171,7 +197,7 @@ Notes:
 - GitHub cron times are always in **UTC**. Tbilisi is UTC+4, so subtract 4 hours from your local time.
 - Scheduled runs can start a few minutes late.
 - The workflow commits to the repo daily, so run `git pull` before pushing from your own machine.
-- Keep the bot token and chat ID in **Secrets**. Plain settings like `MAX_PAGES` can stay in the workflow file.
+- Keep the bot token and chat IDs in **Secrets**. Plain settings like `MAX_PAGES` can stay in the workflow file.
 
 ### Alternative: run locally on a schedule
 
@@ -202,11 +228,12 @@ A local schedule only runs while the computer is on.
 |---|---|
 | `Telegram API returned HTTP 400: chat not found` | Wrong `TELEGRAM_CHAT_ID`, or the bot is not an admin of the channel. Use the real `@username` or the `-100...` ID. |
 | `HTTP 401 Unauthorized` | Wrong or missing bot token. |
-| `0 new listing(s)` every time | Everything scraped is already in `seen_jobs.json`. Delete or edit the file to resend. |
+| `0 new listing(s)` every time | Everything scraped is already in `seen_jobs.json`. Delete that category's list from the file to resend. |
+| `Invalid CHAT_CATEGORIES entry` | Each entry must be `chat_id:category_id`, separated by commas, for example `-1001234567890:3`. |
 | `Health check failed` | jobs.ge is unreachable, blocked the request, or changed its layout. |
 | Workflow fails on "Save seen jobs" | Enable **Read and write permissions** for workflows in the repo settings. |
 | `git push` is rejected | The workflow committed in the meantime. Run `git pull --rebase`, then push again. |
-| `JSONDecodeError` on `seen_jobs.json` | The file is empty or corrupt. Replace its contents with `[]`. |
+| `seen_jobs.json` is empty or corrupt | The script logs a warning and starts fresh. To reset it by hand, replace its contents with `{}`. |
 
 ## Security
 
