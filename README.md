@@ -9,12 +9,13 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 - Remembers what it has already sent, so you never get the same job twice
 - Sends new listings to a Telegram channel, group, or private chat, with a clickable title, the company and the application deadline
 - Can send other jobs.ge categories to other chats with the same bot (see [Multiple chats and categories](#multiple-chats-and-categories))
+- Sends you a private Telegram alert if jobs.ge is down or its layout changes, so the bot never goes quiet without you knowing
 - Saves the seen-job state only after Telegram succeeds, so a failed send is retried on the next run
 - Runs twice a day on GitHub Actions for free
 
 ## How it works
 
-1. A health check confirms jobs.ge is reachable and the page layout is still parseable.
+1. A health check confirms jobs.ge is reachable and the page layout is still parseable. If it fails, an alert goes to `ALERT_CHAT_ID` and the run stops.
 2. For each configured category, the scraper reads the first `MAX_PAGES` pages.
 3. In the IT category, listings containing an excluded keyword are dropped.
 4. Only listings posted in the last `MAX_AGE_DAYS` days are kept, so old listings never show up as new.
@@ -85,6 +86,9 @@ TELEGRAM_CHAT_ID=@your_channel_or_-100xxxxxxxxxx   # receives IT jobs
 # Optional: other chats with their own category (chat_id:category_id, comma-separated)
 CHAT_CATEGORIES=-1001234567890:3
 
+# Optional: your own user ID, alerted when the health check fails
+ALERT_CHAT_ID=123456789
+
 # Optional (defaults shown in the table below)
 IT_CATEGORY_ID=6
 MAX_PAGES=3
@@ -111,6 +115,7 @@ New listings are printed in the terminal and sent to Telegram. Run it a second t
 | `TELEGRAM_BOT_TOKEN` | none | Bot token from @BotFather (required) |
 | `TELEGRAM_CHAT_ID` | none | Channel, group, or user ID that receives IT jobs |
 | `CHAT_CATEGORIES` | none | Extra chats, each with its own category: `chat_id:category_id,chat_id:category_id` |
+| `ALERT_CHAT_ID` | none | Private chat (usually your own user ID) that gets an alert when the health check fails. Unset means no alert |
 | `IT_CATEGORY_ID` | `6` | jobs.ge category ID used for `TELEGRAM_CHAT_ID` |
 | `MAX_PAGES` | `3` | Number of listing pages to scrape |
 | `JOB_LIMIT` | `15` | Maximum number of new listings sent per category per run; extra ones go out on the next run |
@@ -148,6 +153,7 @@ The workflow in `.github/workflows/scrape.yml` runs the scraper every day at 08:
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
    - `CHAT_CATEGORIES` (optional, for extra chats)
+   - `ALERT_CHAT_ID` (optional, for health check alerts)
 3. Go to **Settings → Actions → General → Workflow permissions** and select **Read and write permissions**.
 4. Open the **Actions** tab, choose **Jobs scraper**, and click **Run workflow** to test.
 
@@ -181,6 +187,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CHAT_CATEGORIES: ${{ secrets.CHAT_CATEGORIES }}
+          ALERT_CHAT_ID: ${{ secrets.ALERT_CHAT_ID }}
           IT_CATEGORY_ID: "6"
           MAX_PAGES: "3"
           JOB_LIMIT: "10"

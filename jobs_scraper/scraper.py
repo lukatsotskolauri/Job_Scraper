@@ -1,7 +1,7 @@
 import logging
 import re
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -67,23 +67,30 @@ def _cell_text(cell) -> str:
     return " ".join(cell.get_text(" ", strip=True).split())
 
 
-def health_check() -> bool:
+def find_health_problem() -> Optional[str]:
+    """Return why jobs.ge looks broken, or None if the first page parses fine."""
     try:
         html = fetch_page(page=1, cid=IT_CATEGORY_ID)
-        soup = BeautifulSoup(html, "html.parser")
-
-        job_link_pattern = re.compile(r"view=jobs&id=(\d+)")
-        job_links = soup.find_all("a", href=job_link_pattern)
-
-        if not job_links:
-            logger.warning("Health check failed: No job links found. Site structure may have changed.")
-            return False
-
-        logger.info("Health check passed: Found %d job links on first page.", len(job_links))
-        return True
     except Exception as exc:
-        logger.error("Health check failed: %s", exc)
-        return False
+        problem = f"jobs.ge could not be reached: {exc}"
+        logger.error("Health check failed: %s", problem)
+        return problem
+
+    soup = BeautifulSoup(html, "html.parser")
+    job_link_pattern = re.compile(r"view=jobs&id=(\d+)")
+    job_links = soup.find_all("a", href=job_link_pattern)
+
+    if not job_links:
+        problem = "No job links found on the first page. The site layout may have changed."
+        logger.warning("Health check failed: %s", problem)
+        return problem
+
+    logger.info("Health check passed: Found %d job links on first page.", len(job_links))
+    return None
+
+
+def health_check() -> bool:
+    return find_health_problem() is None
 
 
 def scrape_all_pages(max_pages: int = 3, cid: int = IT_CATEGORY_ID) -> List[JobListing]:

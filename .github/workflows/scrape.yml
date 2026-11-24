@@ -26,6 +26,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CHAT_CATEGORIES: ${{ secrets.CHAT_CATEGORIES }}
+          ALERT_CHAT_ID: ${{ secrets.ALERT_CHAT_ID }}
         run: uv run python jobsge.py
 
       - name: Save seen jobs
