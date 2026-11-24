@@ -26,6 +26,10 @@ CSV_FILE = BASE_DIR / "seen_jobs.csv"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", os.getenv("telegram_bot_token", os.getenv("telegram_bot")))
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", os.getenv("telegram_chat_id"))
 
+# Private chat (usually your own user ID) that is told when the health check fails.
+# Kept separate from the job chats so subscribers never see maintenance alerts.
+ALERT_CHAT_ID = os.getenv("ALERT_CHAT_ID")
+
 
 def _parse_chat_categories(raw: str) -> list[tuple[str, int]]:
     """Parse "chat_id:category_id,chat_id:category_id" into a list of pairs."""
