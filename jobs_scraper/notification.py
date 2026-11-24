@@ -5,7 +5,7 @@ from typing import List
 
 import requests
 
-from .config import TELEGRAM_BOT_TOKEN, REQUEST_TIMEOUT, CSV_FILE, IT_CATEGORY_ID
+from .config import TELEGRAM_BOT_TOKEN, ALERT_CHAT_ID, REQUEST_TIMEOUT, CSV_FILE, IT_CATEGORY_ID
 from .models import JobListing
 
 logger = logging.getLogger(__name__)
@@ -54,22 +54,45 @@ def send_telegram_message(jobs: List[JobListing], chat_id: str, cid: int = IT_CA
     header = f"{len(jobs)} new {label} on jobs.ge"
 
     for text in build_messages(jobs, header):
-        try:
-            response = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "HTML",
-                    "disable_web_page_preview": True,
-                },
-                timeout=REQUEST_TIMEOUT,
-            )
-        except requests.RequestException as exc:
-            raise RuntimeError("Telegram request failed.") from exc
+        _post_message(chat_id, text)
 
-        if not response.ok:
-            raise RuntimeError(f"Telegram API returned HTTP {response.status_code}: {response.text}")
+
+def send_alert(problem: str) -> None:
+    """Tell ALERT_CHAT_ID that the scraper is broken. Never raises."""
+    if not TELEGRAM_BOT_TOKEN or not ALERT_CHAT_ID:
+        logger.warning("Alert not sent. Set TELEGRAM_BOT_TOKEN and ALERT_CHAT_ID.")
+        return
+
+    text = (
+        "<b>⚠️ jobs.ge scraper health check failed</b>\n\n"
+        f"{escape(problem)}\n\n"
+        "No jobs were sent this run. Check the workflow logs."
+    )
+    try:
+        _post_message(ALERT_CHAT_ID, text)
+        logger.info("Alert sent to %s.", ALERT_CHAT_ID)
+    except RuntimeError:
+        # The run is already failing; don't hide the real problem behind this one.
+        logger.exception("Could not send the alert.")
+
+
+def _post_message(chat_id: str, text: str) -> None:
+    try:
+        response = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        raise RuntimeError("Telegram request failed.") from exc
+
+    if not response.ok:
+        raise RuntimeError(f"Telegram API returned HTTP {response.status_code}: {response.text}")
 
 
 def save_to_csv(jobs: List[JobListing]) -> None:
