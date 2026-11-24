@@ -3,10 +3,10 @@ import sys
 from collections import defaultdict
 
 from jobs_scraper.config import MAX_PAGES, JOB_LIMIT, MAX_AGE_DAYS, CHAT_CATEGORIES, IT_CATEGORY_ID
-from jobs_scraper.scraper import health_check, scrape_all_pages
+from jobs_scraper.scraper import find_health_problem, scrape_all_pages
 from jobs_scraper.filter import exclude_listings, filter_recent
 from jobs_scraper.state import get_new_listings, load_seen, save_seen
-from jobs_scraper.notification import save_to_csv, send_telegram_message
+from jobs_scraper.notification import save_to_csv, send_alert, send_telegram_message
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -44,7 +44,9 @@ def process_category(cid: int, chat_ids: list[str], seen: dict[str, set[str]]) -
 
 
 def main() -> None:
-    if not health_check():
+    problem = find_health_problem()
+    if problem:
+        send_alert(problem)
         logger.error("Aborting due to failed health check.")
         sys.exit(1)
 
