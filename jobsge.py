@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from jobs_scraper.config import MAX_PAGES, JOB_LIMIT, MAX_AGE_DAYS, CHAT_CATEGORIES, IT_CATEGORY_ID
 from jobs_scraper.scraper import find_health_problem, scrape_all_pages
-from jobs_scraper.filter import exclude_listings, filter_recent
+from jobs_scraper.filter import filter_recent
 from jobs_scraper.state import get_new_listings, load_seen, save_seen
 from jobs_scraper.notification import save_to_csv, send_alert, send_telegram_message
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def process_category(cid: int, chat_ids: list[str], seen: dict[str, set[str]]) -> None:
-    listings = exclude_listings(scrape_all_pages(max_pages=MAX_PAGES, cid=cid), cid)
+    listings = scrape_all_pages(max_pages=MAX_PAGES, cid=cid)
     listings = filter_recent(listings, MAX_AGE_DAYS)
     logger.info("[category %d] %d listing(s) from the last %d day(s).", cid, len(listings), MAX_AGE_DAYS)
 

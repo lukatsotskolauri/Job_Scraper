@@ -17,8 +17,6 @@ JOB_LIMIT = int(os.getenv("JOB_LIMIT", "15"))  # max jobs sent per category per 
 MAX_AGE_DAYS = int(os.getenv("MAX_AGE_DAYS", "3"))  # only jobs posted within this many days count as new
 TIMESTAMP_FORMAT = os.getenv("TIMESTAMP_FORMAT", "%d/%m/%Y")
 
-EXCLUDE_KEYWORDS = tuple(k.strip() for k in os.getenv("EXCLUDE_KEYWORDS", "senior,.net,Java,UX/UI,PHP").split(","))
-
 BASE_DIR = Path(__file__).parent.parent
 STATE_FILE = BASE_DIR / "seen_jobs.json"
 CSV_FILE = BASE_DIR / "seen_jobs.csv"

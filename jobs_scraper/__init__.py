@@ -2,7 +2,7 @@
 from .models import JobListing
 from .scraper import fetch_page, parse_job_listings, find_health_problem, health_check, scrape_all_pages
 from .state import load_seen, save_seen, get_new_listings
-from .filter import exclude_listings, filter_recent
+from .filter import filter_recent
 from .notification import format_jobs_message, build_messages, send_telegram_message, send_alert, save_to_csv
 from .config import (
     BASE_URL,
@@ -13,7 +13,6 @@ from .config import (
     JOB_LIMIT,
     MAX_AGE_DAYS,
     TIMESTAMP_FORMAT,
-    EXCLUDE_KEYWORDS,
     STATE_FILE,
     CSV_FILE,
     TELEGRAM_BOT_TOKEN,
@@ -32,7 +31,6 @@ __all__ = [
     "JOB_LIMIT",
     "MAX_AGE_DAYS",
     "TIMESTAMP_FORMAT",
-    "EXCLUDE_KEYWORDS",
     "STATE_FILE",
     "CSV_FILE",
     "TELEGRAM_BOT_TOKEN",
@@ -49,7 +47,6 @@ __all__ = [
     "load_seen",
     "save_seen",
     "get_new_listings",
-    "exclude_listings",
     "filter_recent",
     "format_jobs_message",
     "build_messages",

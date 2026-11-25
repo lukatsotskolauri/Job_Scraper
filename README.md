@@ -5,7 +5,6 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 ## Features
 
 - Scrapes the IT category of jobs.ge (configurable number of pages)
-- Filters out listings by keyword (for example `senior`, `.net`, `Java`)
 - Remembers what it has already sent, so you never get the same job twice
 - Sends new listings to a Telegram channel, group, or private chat, with a clickable title, the company and the application deadline
 - Can send other jobs.ge categories to other chats with the same bot (see [Multiple chats and categories](#multiple-chats-and-categories))
@@ -17,11 +16,10 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 
 1. A health check confirms jobs.ge is reachable and the page layout is still parseable. If it fails, an alert goes to `ALERT_CHAT_ID` and the run stops.
 2. For each configured category, the scraper reads the first `MAX_PAGES` pages.
-3. In the IT category, listings containing an excluded keyword are dropped.
-4. Only listings posted in the last `MAX_AGE_DAYS` days are kept, so old listings never show up as new.
-5. Listings whose IDs are not in that category's list in `seen_jobs.json` are treated as new. At most `JOB_LIMIT` of them are sent per run; any extra wait for the next run, so nothing is skipped on busy days.
-6. New listings are sent to every chat assigned to that category.
-7. Only after a successful send, the new IDs are saved to `seen_jobs.json` (and appended to `seen_jobs.csv`).
+3. Only listings posted in the last `MAX_AGE_DAYS` days are kept, so old listings never show up as new.
+4. Listings whose IDs are not in that category's list in `seen_jobs.json` are treated as new. At most `JOB_LIMIT` of them are sent per run; any extra wait for the next run, so nothing is skipped on busy days.
+5. New listings are sent to every chat assigned to that category.
+6. Only after a successful send, the new IDs are saved to `seen_jobs.json` (and appended to `seen_jobs.csv`).
 
 ## Project structure
 
@@ -31,7 +29,7 @@ A small Python script that scrapes the latest IT vacancies from [jobs.ge](https:
 ├── jobs_scraper/
 │   ├── config.py          # Settings, read from environment variables
 │   ├── scraper.py         # Health check and page scraping
-│   ├── filter.py          # Keyword exclusion (IT category only)
+│   ├── filter.py          # Keeps only recently posted listings
 │   ├── state.py           # Seen job IDs per category, stored in seen_jobs.json
 │   ├── notification.py    # Telegram sending and CSV logging
 │   └── models.py          # JobListing data model
@@ -95,7 +93,6 @@ MAX_PAGES=3
 JOB_LIMIT=10
 REQUEST_TIMEOUT=10
 TIMESTAMP_FORMAT=%d/%m/%Y
-EXCLUDE_KEYWORDS=senior,.net,Java,UX/UI,PHP
 ```
 
 Never commit `.env`. It is already listed in `.gitignore`.
@@ -122,7 +119,6 @@ New listings are printed in the terminal and sent to Telegram. Run it a second t
 | `MAX_AGE_DAYS` | `3` | Only listings posted within this many days count as new |
 | `REQUEST_TIMEOUT` | `15` | HTTP timeout in seconds |
 | `TIMESTAMP_FORMAT` | `%d/%m/%Y` | Date format shown in messages |
-| `EXCLUDE_KEYWORDS` | `senior,.net,Java,UX/UI,PHP` | Comma-separated words; IT listings with these in the title are skipped |
 
 At least one of `TELEGRAM_CHAT_ID` or `CHAT_CATEGORIES` must be set.
 
@@ -193,7 +189,6 @@ jobs:
           JOB_LIMIT: "10"
           REQUEST_TIMEOUT: "10"
           TIMESTAMP_FORMAT: "%d/%m/%Y"
-          EXCLUDE_KEYWORDS: "senior,.net,Java,UX/UI,PHP"
         run: uv run python jobsge.py
 
       - name: Save seen jobs
